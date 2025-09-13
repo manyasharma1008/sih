@@ -1,9 +1,7 @@
-# chatbot/rag_pipeline.py
 import faiss
 import numpy as np
 from .model_loader import load_embedding_model, load_llm
 
-# Simple default symptom dataset (can be expanded)
 SYMPTOM_DB = [
     {
         "symptoms": ["fever", "cough", "sore throat"],
