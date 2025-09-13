@@ -1,0 +1,17 @@
+[
+  {
+    "symptoms": ["fever", "cough", "sore throat"],
+    "diseases": ["Common Cold", "Flu", "COVID-19"],
+    "advice": "Stay hydrated, rest, and consult a doctor if symptoms persist more than 3 days."
+  },
+  {
+    "symptoms": ["chest pain", "shortness of breath", "dizziness"],
+    "diseases": ["Heart Attack", "Angina", "Panic Attack"],
+    "advice": "Seek immediate medical help. Call emergency services."
+  },
+  {
+    "symptoms": ["headache", "sensitivity to light", "stiff neck"],
+    "diseases": ["Migraine", "Meningitis"],
+    "advice": "If sudden and severe, seek emergency medical attention."
+  }
+]
