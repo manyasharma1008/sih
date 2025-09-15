@@ -1,9 +1,4 @@
 streamlit
-pandas
-numpy
-scikit-learn
-sentence-transformers
+gradio
 transformers
 torch
-faiss-cpu
-requests
