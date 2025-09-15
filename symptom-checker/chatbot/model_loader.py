@@ -1,9 +1,8 @@
-# chatbot/model_loader.py
 from transformers import AutoTokenizer, AutoModelForSeq2SeqLM, pipeline
 
-def load_llm(model_name="google/flan-t5-small"):
+def load_llm(model_name="google/flan-t5-base"):
     """
-    Load a small LLM for symptom-based disease prediction.
+    Load a CPU/GPU-friendly LLM for disease prediction.
     """
     tokenizer = AutoTokenizer.from_pretrained(model_name)
     model = AutoModelForSeq2SeqLM.from_pretrained(model_name)
@@ -12,15 +11,6 @@ def load_llm(model_name="google/flan-t5-small"):
         model=model,
         tokenizer=tokenizer,
         device=-1,  # CPU
-        max_new_tokens=150
+        max_new_tokens=200
     )
     return llm_pipeline
-
-
-from sentence_transformers import SentenceTransformer
-
-def load_embedding_model():
-    """
-    Optional embedding model for symptom similarity (FAISS).
-    """
-    return SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
