@@ -1,6 +1,6 @@
 from transformers import AutoTokenizer, AutoModelForSeq2SeqLM, pipeline
 
-def load_llm(model_name="google/flan-t5-base"):
+def load_llm(model_name="microsoft/phi-3-mini-4k-instruct"):
     """
     Load a CPU/GPU-friendly LLM for disease prediction.
     """
@@ -10,7 +10,7 @@ def load_llm(model_name="google/flan-t5-base"):
         "text2text-generation",
         model=model,
         tokenizer=tokenizer,
-        device=-1,  # CPU
+        device_map="auto",  # GPU if available
         max_new_tokens=200
     )
     return llm_pipeline
