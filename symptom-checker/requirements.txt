@@ -1,4 +1,6 @@
 streamlit
-gradio
+sentence-transformers
 transformers
 torch
+faiss-cpu
+numpy
