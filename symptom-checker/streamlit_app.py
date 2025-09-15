@@ -1,38 +1,55 @@
 import streamlit as st
-from chatbot.model_loader import load_llm
+from transformers import AutoTokenizer, AutoModelForSeq2SeqLM, pipeline
 
 st.set_page_config(page_title="AI Symptom Checker", page_icon="🩺", layout="wide")
 st.title("🧠 AI Symptom Checker (LLM Only)")
 
-# Load LLM
 @st.cache_resource
-def init_llm():
-    return load_llm("google/flan-t5-small")
+def load_llm():
+    model_name = "google/flan-t5-base"  # CPU-friendly, bigger than small
+    tokenizer = AutoTokenizer.from_pretrained(model_name)
+    model = AutoModelForSeq2SeqLM.from_pretrained(model_name)
+    llm_pipeline = pipeline(
+        "text2text-generation",
+        model=model,
+        tokenizer=tokenizer,
+        device_map="auto",  # CPU or GPU if available
+        max_new_tokens=150
+    )
+    return llm_pipeline
 
-llm = init_llm()
+llm = load_llm()
 
-# Prediction function with better zero-shot prompt
+# ---------------------------
+# Prediction function
+# ---------------------------
 def predict(symptoms):
-    symptoms_text = ", ".join(symptoms)
+    # Few-shot prompt for better disease prediction
     prompt = f"""
-You are a professional medical assistant. A patient has the following symptoms: {symptoms_text}.
-Predict 1-3 possible diseases that could cause these symptoms.
-For each disease, provide a concise one-line advice.
-Do NOT repeat the instructions, just give output.
-Include disclaimer: '⚠️ This is not a medical diagnosis. Please consult a doctor.'
+You are a professional medical assistant.
 
-Format strictly like this:
-Predicted Disease(s): <disease1>, <disease2>, <disease3>
-Advice: <short advice>
+Predict 1-3 possible diseases from the given symptoms and provide one-line advice for each. 
+Include this disclaimer at the end: '⚠️ This is not a medical diagnosis. Please consult a doctor.'
+
+Examples:
+Symptoms: fever, cough
+Predicted Disease(s): Common Cold, Flu
+Advice: Stay hydrated, rest, and consult a doctor if symptoms persist.
+
+Symptoms: stomach ache, nausea
+Predicted Disease(s): Gastritis, Food Poisoning
+Advice: Avoid heavy meals, drink water, and see a doctor if severe.
+
+Patient Symptoms: {', '.join(symptoms)}
+Predicted Disease(s):
+Advice:
 """
     result = llm(prompt)
-    # Extract the generated text
-    text = result[0]["generated_text"].strip()
-    # Remove any repeated instructions by filtering lines starting with "Predict" or "Include"
-    lines = [line for line in text.split("\n") if not line.lower().startswith(("predict", "include"))]
-    return "\n".join(lines).strip()
+    return result[0]["generated_text"].strip()
 
+# ---------------------------
 # Streamlit UI
+# ---------------------------
 user_input = st.text_input("Enter your symptoms (comma-separated):")
 if st.button("Predict"):
     if user_input:
@@ -42,6 +59,6 @@ if st.button("Predict"):
         else:
             with st.spinner("Analyzing symptoms..."):
                 output = predict(symptoms)
-            st.info(output)
+            st.success(output)
     else:
         st.error("Please enter at least one symptom.")
