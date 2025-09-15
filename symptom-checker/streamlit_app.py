@@ -27,11 +27,8 @@ def load_data():
     return symptoms_dict
 
 symptoms_dict = load_data()
-
 if not symptoms_dict:
-    st.stop()
-
-all_symptoms = list(symptoms_dict.keys()) 
+    st.stop()  # Stop if file missing or empty
 
 @st.cache_resource
 def init_models():
@@ -61,10 +58,12 @@ index.add(embeddings)
 def predict(symptoms):
     symptoms_lower = [s.lower() for s in symptoms]
 
+    # Check hardcoded symptoms first
     for entry in SYMPTOM_DB:
         if all(s in [x.lower() for x in entry["symptoms"]] for s in symptoms_lower):
             return f"**Predicted Disease(s):** {', '.join(entry['diseases'])}\n💡 Advice: {entry['advice']}"
 
+    # Use embedding + LLM for unknown symptoms
     query_vec = embedder.encode([" ".join(symptoms)], convert_to_numpy=True)
     D, I = index.search(query_vec, 1)
     matched = SYMPTOM_DB[I[0][0]]
