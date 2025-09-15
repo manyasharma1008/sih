@@ -17,6 +17,7 @@ SYMPTOM_DB = [
 
 class SymptomChatbot:
     def __init__(self, model_name="google/flan-t5-small"):
+        # Load data and models
         self.data = SYMPTOM_DB
         self.embedder = load_embedding_model()
         self.llm = load_llm(model_name)
@@ -38,25 +39,32 @@ class SymptomChatbot:
         """
         symptoms_lower = [s.lower() for s in user_symptoms]
 
-        # First, check exact match
+        # 1️⃣ Check for exact match first
         for entry in self.data:
             if all(s in [x.lower() for x in entry["symptoms"]] for s in symptoms_lower):
                 diseases = ", ".join(entry["diseases"])
                 advice = entry["advice"]
-                return f"**Predicted Disease(s):** {diseases}\n💡 Advice: {advice}"
+                return f"**Predicted Disease(s):** {diseases}\n💡 Advice: {advice}\n⚠️ This is not a medical diagnosis. Please consult a doctor."
 
-        # If no exact match, use FAISS similarity + LLM
+        # 2️⃣ If no exact match, use FAISS + LLM
         query_vec = self.embedder.encode([" ".join(user_symptoms)], convert_to_numpy=True)
         D, I = self.index.search(query_vec, 1)
         matched = self.data[I[0][0]]
 
         prompt = f"""
+You are a helpful medical assistant.
+
 Patient symptoms: {', '.join(user_symptoms)}
+Most similar known symptoms: {', '.join(matched['symptoms'])}
 Possible conditions: {', '.join(matched['diseases'])}
 Suggested advice: {matched['advice']}
 
-Please give a clear, empathetic answer with a disclaimer:
-'This is not a medical diagnosis. Please consult a doctor.'
+Please give a **short, clear response** in this format:
+Predicted Disease(s): <disease names>
+Advice: <short advice>
+Include the disclaimer: "This is not a medical diagnosis. Please consult a doctor."
 """
+
         response = self.llm(prompt)
+        # Ensure string output
         return response[0]["generated_text"].strip()
