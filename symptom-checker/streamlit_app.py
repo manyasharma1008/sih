@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 import json
 import random
-from model_loader import load_llm
+from chatbot.model_loader import load_llm
 
 @st.cache_data
 def load_data():
