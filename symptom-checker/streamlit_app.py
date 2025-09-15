@@ -1,57 +1,75 @@
-import streamlit as st
-import pandas as pd
+import os
 import json
-import random
-from chatbot.model_loader import load_llm
+import streamlit as st
+from chatbot.model_loader import load_llm, load_embedding_model
+import faiss
+import numpy as np
+
+st.set_page_config(page_title="AI Symptom Checker", page_icon="🩺", layout="wide")
+st.title("🧠 Symptom Checker with AI")
 
 @st.cache_data
 def load_data():
-    with open("symptoms.json", "r") as f:
+    base_dir = os.path.dirname(__file__)
+    json_path = os.path.join(base_dir, "chatbot", "symptoms.json")
+    with open(json_path, "r") as f:
         symptoms_dict = json.load(f)
+    return symptoms_dict
 
-    try:
-        df = pd.read_csv("Training.csv")
-    except FileNotFoundError:
-        df = pd.DataFrame(columns=["Symptom", "Disease"])
+symptoms_dict = load_data()
+all_symptoms = list(symptoms_dict.keys())
 
-    return df, symptoms_dict
+@st.cache_resource
+def init_models():
+    embedder = load_embedding_model()
+    llm = load_llm("google/flan-t5-small")
+    return embedder, llm
 
+embedder, llm = init_models()
 
-def llm_predict(symptoms):
-    """
-    Use your local LLM to predict disease and precautions.
-    """
-    llm = load_llm(model_name="google/flan-t5-small")
+SYMPTOM_DB = [
+    {"symptoms": ["fever", "cough", "sore throat"], "diseases": ["Common Cold", "Flu", "COVID-19"], 
+     "advice": "Stay hydrated, rest, and consult a doctor if symptoms persist more than 3 days."},
+    {"symptoms": ["chest pain", "shortness of breath", "dizziness"], "diseases": ["Heart Attack", "Angina", "Panic Attack"], 
+     "advice": "Seek immediate medical help. Call emergency services."},
+    {"symptoms": ["headache", "sensitivity to light", "stiff neck"], "diseases": ["Migraine", "Meningitis"], 
+     "advice": "If sudden and severe, seek emergency medical attention."}
+]
+
+symptom_texts = [" ".join(item["symptoms"]) for item in SYMPTOM_DB]
+embeddings = embedder.encode(symptom_texts, convert_to_numpy=True)
+index = faiss.IndexFlatL2(embeddings.shape[1])
+index.add(embeddings)
+
+def predict(symptoms):
+    symptoms_lower = [s.lower() for s in symptoms]
+    for entry in SYMPTOM_DB:
+        if all(s in [x.lower() for x in entry["symptoms"]] for s in symptoms_lower):
+            return f"**Predicted Disease(s):** {', '.join(entry['diseases'])}\n💡 Advice: {entry['advice']}"
+
+    query_vec = embedder.encode([" ".join(symptoms)], convert_to_numpy=True)
+    D, I = index.search(query_vec, 1)
+    matched = SYMPTOM_DB[I[0][0]]
 
     prompt = f"""
-    You are a medical assistant. Given these symptoms: {', '.join(symptoms)},
-    predict the most likely disease and provide 2-3 possible precautions.
-    Answer in a short and clear format.
-    """
+Patient symptoms: {', '.join(symptoms)}
+Possible conditions: {', '.join(matched['diseases'])}
+Suggested advice: {matched['advice']}
 
+Please give a clear, empathetic answer with a disclaimer:
+'This is not a medical diagnosis. Please consult a doctor.'
+"""
     result = llm(prompt)
-    return result
-
-st.title("🧠 Symptom Checker with AI")
-
-df, symptoms_dict = load_data()
+    return result[0]["generated_text"].strip()
 
 user_input = st.text_input("Enter your symptoms (comma-separated):")
 if st.button("Predict"):
     if user_input:
-        symptoms = [s.strip().lower() for s in user_input.split(",")]
-        matched_disease = None
-
-        for disease, disease_symptoms in symptoms_dict.items():
-            if all(symptom in [s.lower() for s in disease_symptoms] for symptom in symptoms):
-                matched_disease = disease
-                break
-
-        if matched_disease:
-            st.success(f"**Predicted Disease:** {matched_disease}")
+        symptoms = [s.strip() for s in user_input.split(",") if s.strip()]
+        if not symptoms:
+            st.error("Please enter at least one symptom.")
         else:
-            st.warning("No exact match found. Using AI model...")
-            ai_result = llm_predict(symptoms)
-            st.info(ai_result)
+            result = predict(symptoms)
+            st.info(result)
     else:
         st.error("Please enter at least one symptom.")
