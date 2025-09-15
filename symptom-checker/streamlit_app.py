@@ -7,7 +7,7 @@ st.title("🧠 AI Symptom Checker (LLM Only)")
 # Load LLM
 @st.cache_resource
 def init_llm():
-    return load_llm("microsoft/phi-3-mini-4k-instruct")
+    return load_llm("google/flan-t5-small")
 
 llm = init_llm()
 

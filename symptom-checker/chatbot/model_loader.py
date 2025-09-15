@@ -1,6 +1,6 @@
 from transformers import AutoTokenizer, AutoModelForSeq2SeqLM, pipeline
 
-def load_llm(model_name="microsoft/phi-3-mini-4k-instruct"):
+def load_llm(model_name="google/flan-t5-small"):
     """
     Load a CPU/GPU-friendly LLM for disease prediction.
     """
