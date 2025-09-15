@@ -11,30 +11,26 @@ def init_llm():
 
 llm = init_llm()
 
-# Prediction function using few-shot prompt
+# Prediction function with better zero-shot prompt
 def predict(symptoms):
     symptoms_text = ", ".join(symptoms)
     prompt = f"""
-You are a helpful medical assistant.
-Here are examples:
-
-Symptoms: fever, cough
-Predicted Disease(s): Flu, Common Cold
-Advice: Rest, drink fluids, consult doctor if persistent
-
-Symptoms: stomach ache, nausea
-Predicted Disease(s): Gastritis, Food Poisoning
-Advice: Avoid heavy meals, stay hydrated, see a doctor if severe
-
-Now, given patient symptoms: {symptoms_text}
-Predict 1-3 possible diseases and give short advice.
+You are a professional medical assistant. A patient has the following symptoms: {symptoms_text}.
+Predict 1-3 possible diseases that could cause these symptoms.
+For each disease, provide a concise one-line advice.
+Do NOT repeat the instructions, just give output.
 Include disclaimer: '⚠️ This is not a medical diagnosis. Please consult a doctor.'
-Format:
-Predicted Disease(s): <disease names>
+
+Format strictly like this:
+Predicted Disease(s): <disease1>, <disease2>, <disease3>
 Advice: <short advice>
 """
     result = llm(prompt)
-    return result[0]["generated_text"].strip()
+    # Extract the generated text
+    text = result[0]["generated_text"].strip()
+    # Remove any repeated instructions by filtering lines starting with "Predict" or "Include"
+    lines = [line for line in text.split("\n") if not line.lower().startswith(("predict", "include"))]
+    return "\n".join(lines).strip()
 
 # Streamlit UI
 user_input = st.text_input("Enter your symptoms (comma-separated):")
