@@ -35,6 +35,7 @@ def init_models():
 embedder, llm = init_models()
 
 # Prediction function
+# Prediction function
 def predict(symptoms):
     symptoms_lower = [s.lower() for s in symptoms]
 
@@ -43,20 +44,22 @@ def predict(symptoms):
         if all(s in [x.lower() for x in entry["symptoms"]] for s in symptoms_lower):
             return f"**Predicted Disease(s):** {', '.join(entry['diseases'])}\n💡 Advice: {entry['advice']}\n⚠️ Not a medical diagnosis."
 
-    # 2️⃣ If not found, let LLM predict diseases
+    # 2️⃣ If not found, use LLM with better prompt
     prompt = f"""
 You are a helpful medical assistant.
 Patient symptoms: {', '.join(symptoms)}
 
-Based on these symptoms, suggest possible diseases (2-3) and give short advice for each.
-Always include disclaimer: 'This is not a medical diagnosis. Please consult a doctor.'
-Format like:
-Predicted Disease(s): <disease names>
-Advice: <short advice>
+Based on these symptoms, suggest 1-3 possible diseases and give 1-line advice for each.
+Example format:
+Predicted Disease(s): Common Cold, Flu
+Advice: Rest, stay hydrated, consult a doctor if symptoms persist.
+
+Do not repeat placeholders like 'disease name(s)'.
+Always include: '⚠️ This is not a medical diagnosis. Please consult a doctor.'
 """
-    # Run LLM on CPU
     result = llm(prompt)
     return result[0]["generated_text"].strip()
+
 
 # Streamlit UI
 user_input = st.text_input("Enter your symptoms (comma-separated):")
