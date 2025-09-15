@@ -1,5 +1,5 @@
 import streamlit as st
-from chatbot.rag_pipeline import SymptomChatbot
+from chatbot.rag_pipeline import load_llm
 
 st.set_page_config(page_title="AI Symptom Checker", page_icon="🩺", layout="wide")
 st.title("🧠 AI Symptom Checker (LLM Only)")
