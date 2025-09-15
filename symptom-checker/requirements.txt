@@ -1,7 +1,5 @@
-fastapi
-uvicorn
-transformers
-sentence-transformers
-faiss-cpu
-torch
-gradio
+streamlit
+scikit-learn
+pandas
+numpy
+requests
