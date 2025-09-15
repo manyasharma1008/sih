@@ -11,15 +11,17 @@ SYMPTOM_DB = [
      "advice": "Seek immediate medical help. Call emergency services."},
     {"symptoms": ["headache", "sensitivity to light", "stiff neck"],
      "diseases": ["Migraine", "Meningitis"],
-     "advice": "If sudden and severe, seek emergency medical attention."}
+     "advice": "If sudden and severe, seek emergency medical attention."},
+    {"symptoms": ["stomach ache", "nausea"],
+     "diseases": ["Gastritis", "Food Poisoning"],
+     "advice": "Avoid heavy meals, stay hydrated, see a doctor if severe."}
 ]
 
 class SymptomChatbot:
-    def __init__(self, model_name="google/flan-t5-small"):
+    def __init__(self, model_name="microsoft/phi-3-mini-4k-instruct"):
         self.data = SYMPTOM_DB
         self.embedder = load_embedding_model()
         self.llm = load_llm(model_name)
-        # Build FAISS index only for similarity search if needed
         self.index, self.symptom_texts = self._build_index()
 
     def _build_index(self):
@@ -32,23 +34,26 @@ class SymptomChatbot:
     def get_response(self, user_symptoms):
         symptoms_lower = [s.lower() for s in user_symptoms]
 
-        # 1️⃣ Check for exact match in database
+        # Exact match first
         for entry in self.data:
             if all(s in [x.lower() for x in entry["symptoms"]] for s in symptoms_lower):
                 diseases = ", ".join(entry["diseases"])
                 advice = entry["advice"]
                 return f"**Predicted Disease(s):** {diseases}\n💡 Advice: {advice}\n⚠️ This is not a medical diagnosis. Please consult a doctor."
 
-        # 2️⃣ If no exact match, call LLM with raw symptoms
-        prompt = f"""
-You are a helpful medical assistant.
+        # If no exact match, use FAISS + LLM
+        query_vec = self.embedder.encode([" ".join(user_symptoms)], convert_to_numpy=True)
+        D, I = self.index.search(query_vec, 1)
+        matched = self.data[I[0][0]]
 
+        prompt = f"""
+You are a medical assistant.
 Patient symptoms: {', '.join(user_symptoms)}
-Predict possible disease(s) and give 2-3 short precautions.
-Answer in a clear format like:
+Suggest possible disease(s) and 2-3 precautions.
+Answer like:
 Predicted Disease(s): <disease names>
 Advice: <short advice>
-Include disclaimer: "This is not a medical diagnosis. Please consult a doctor."
+Include disclaimer: 'This is not a medical diagnosis. Please consult a doctor.'
 """
         response = self.llm(prompt)
         return response[0]["generated_text"].strip()
