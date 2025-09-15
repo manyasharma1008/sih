@@ -1,8 +1,6 @@
 import os
 import json
 import streamlit as st
-import faiss
-import numpy as np
 from chatbot.model_loader import load_llm, load_embedding_model
 
 st.set_page_config(page_title="AI Symptom Checker", page_icon="🩺", layout="wide")
@@ -10,14 +8,11 @@ st.title("🧠 Symptom Checker with AI")
 
 @st.cache_data
 def load_data():
-    """
-    Loads symptoms.json safely. Returns an empty dict if file not found.
-    """
     base_dir = os.path.dirname(__file__)
     json_path = os.path.join(base_dir, "data", "symptoms.json")
     if not os.path.exists(json_path):
         st.error(f"Cannot find symptoms.json at {json_path}")
-        return {}  
+        return {}
     with open(json_path, "r") as f:
         try:
             symptoms_dict = json.load(f)
@@ -28,11 +23,11 @@ def load_data():
 
 symptoms_dict = load_data()
 if not symptoms_dict:
-    st.stop()  # Stop if file missing or empty
+    st.stop()  
 
 @st.cache_resource
 def init_models():
-    embedder = load_embedding_model()
+    embedder = load_embedding_model()  
     llm = load_llm("google/flan-t5-small")
     return embedder, llm
 
@@ -50,35 +45,25 @@ SYMPTOM_DB = [
      "advice": "If sudden and severe, seek emergency medical attention."}
 ]
 
-symptom_texts = [" ".join(item["symptoms"]) for item in SYMPTOM_DB]
-embeddings = embedder.encode(symptom_texts, convert_to_numpy=True)
-index = faiss.IndexFlatL2(embeddings.shape[1])
-index.add(embeddings)
-
+# Prediction function
 def predict(symptoms):
     symptoms_lower = [s.lower() for s in symptoms]
 
-    # Check hardcoded symptoms first
+    # Check hardcoded symptoms
     for entry in SYMPTOM_DB:
         if all(s in [x.lower() for x in entry["symptoms"]] for s in symptoms_lower):
             return f"**Predicted Disease(s):** {', '.join(entry['diseases'])}\n💡 Advice: {entry['advice']}"
 
-    # Use embedding + LLM for unknown symptoms
-    query_vec = embedder.encode([" ".join(symptoms)], convert_to_numpy=True)
-    D, I = index.search(query_vec, 1)
-    matched = SYMPTOM_DB[I[0][0]]
-
+    # No exact match -> feed directly to LLM
     prompt = f"""
 Patient symptoms: {', '.join(symptoms)}
-Possible conditions: {', '.join(matched['diseases'])}
-Suggested advice: {matched['advice']}
-
-Please give a clear, empathetic answer with a disclaimer:
-'This is not a medical diagnosis. Please consult a doctor.'
+Please suggest possible diseases and precautions in 2-3 lines.
+Include a disclaimer: 'This is not a medical diagnosis. Please consult a doctor.'
 """
     result = llm(prompt)
     return result[0]["generated_text"].strip()
 
+# Streamlit UI
 user_input = st.text_input("Enter your symptoms (comma-separated):")
 if st.button("Predict"):
     if user_input:
