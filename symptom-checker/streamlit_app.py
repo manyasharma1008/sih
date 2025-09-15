@@ -27,8 +27,9 @@ SYMPTOM_DB = load_symptom_dataset()
 # Load models
 @st.cache_resource
 def init_models():
-    embedder = load_embedding_model()  # optional for FAISS
-    llm = load_llm("microsoft/phi-3-mini-4k-instruct")  # generative AI
+    embedder = load_embedding_model()  # optional for FAISS or similarity search
+    # Use smaller CPU-friendly model
+    llm = load_llm("google/flan-t5-small")  
     return embedder, llm
 
 embedder, llm = init_models()
@@ -53,6 +54,7 @@ Format like:
 Predicted Disease(s): <disease names>
 Advice: <short advice>
 """
+    # Run LLM on CPU
     result = llm(prompt)
     return result[0]["generated_text"].strip()
 

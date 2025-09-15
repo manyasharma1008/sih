@@ -7,9 +7,9 @@ def load_embedding_model():
     """
     return SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
 
-def load_llm(model_name="microsoft/phi-3-mini-4k-instruct"):
+def load_llm(model_name="google/flan-t5-small"):
     """
-    Loads a CPU-friendly LLM for text generation.
+    Loads a small CPU-friendly LLM for text generation.
     """
     tokenizer = AutoTokenizer.from_pretrained(model_name)
     model = AutoModelForSeq2SeqLM.from_pretrained(model_name)
@@ -17,6 +17,6 @@ def load_llm(model_name="microsoft/phi-3-mini-4k-instruct"):
         "text2text-generation",
         model=model,
         tokenizer=tokenizer,
-        device_map="auto", 
+        device=-1,  # force CPU
         max_new_tokens=150
     )
