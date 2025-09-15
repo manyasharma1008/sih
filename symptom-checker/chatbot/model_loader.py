@@ -1,22 +1,16 @@
-from sentence_transformers import SentenceTransformer
 from transformers import AutoTokenizer, AutoModelForSeq2SeqLM, pipeline
 
-def load_embedding_model():
+def load_llm(model_name="microsoft/phi-3-mini-4k-instruct"):
     """
-    CPU-friendly embedding model for symptom similarity.
-    """
-    return SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
-
-def load_llm(model_name="google/flan-t5-small"):
-    """
-    Loads a small CPU-friendly LLM for text generation.
+    Load a CPU/GPU-friendly LLM for disease prediction.
     """
     tokenizer = AutoTokenizer.from_pretrained(model_name)
     model = AutoModelForSeq2SeqLM.from_pretrained(model_name)
-    return pipeline(
+    llm_pipeline = pipeline(
         "text2text-generation",
         model=model,
         tokenizer=tokenizer,
-        device=-1,  # force CPU
+        device_map="auto",  # GPU if available
         max_new_tokens=150
     )
+    return llm_pipeline

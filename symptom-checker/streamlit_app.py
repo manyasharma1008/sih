@@ -1,75 +1,30 @@
-import os
-import json
 import streamlit as st
-import faiss
-import numpy as np
-from chatbot.model_loader import load_llm, load_embedding_model
+from chatbot.model_loader import load_llm
 
 st.set_page_config(page_title="AI Symptom Checker", page_icon="🩺", layout="wide")
-st.title("🧠 Symptom Checker with AI")
+st.title("🧠 AI Symptom Checker (LLM Only)")
 
-# Load JSON symptom database
-@st.cache_data
-def load_symptom_dataset():
-    base_dir = os.path.dirname(__file__)
-    path = os.path.join(base_dir, "data", "symptoms.json")
-    if not os.path.exists(path):
-        st.warning("No local symptom database found. Will rely entirely on AI predictions.")
-        return []
-    with open(path, "r") as f:
-        try:
-            data = json.load(f)
-        except json.JSONDecodeError:
-            st.warning("Invalid JSON. Will rely on AI predictions.")
-            return []
-    return data
-
-SYMPTOM_DB = load_symptom_dataset()
-
-# Load models
+# Load LLM
 @st.cache_resource
-def init_models():
-    embedder = load_embedding_model()
-    llm = load_llm("google/flan-t5-small")  # CPU-friendly small LLM
-    return embedder, llm
+def init_llm():
+    return load_llm("microsoft/phi-3-mini-4k-instruct")
 
-embedder, llm = init_models()
-
-# Build FAISS index for symptom similarity
-if SYMPTOM_DB:
-    symptom_texts = [" ".join(entry["symptoms"]) for entry in SYMPTOM_DB]
-    embeddings = embedder.encode(symptom_texts, convert_to_numpy=True)
-    index = faiss.IndexFlatL2(embeddings.shape[1])
-    index.add(embeddings)
+llm = init_llm()
 
 # Prediction function
 def predict(symptoms):
-    symptoms_lower = [s.lower() for s in symptoms]
-
-    # 1️⃣ Exact match in JSON DB
-    for entry in SYMPTOM_DB:
-        if all(s in [x.lower() for x in entry["symptoms"]] for s in symptoms_lower):
-            return f"**Predicted Disease(s):** {', '.join(entry['diseases'])}\n💡 Advice: {entry['advice']}\n⚠️ Not a medical diagnosis."
-
-    # 2️⃣ FAISS similarity match
-    if SYMPTOM_DB:
-        query_vec = embedder.encode([" ".join(symptoms)], convert_to_numpy=True)
-        D, I = index.search(query_vec, 1)
-        matched = SYMPTOM_DB[I[0][0]]
-        # Check similarity threshold
-        if D[0][0] < 1.0:  # Adjust threshold if needed
-            return f"**Predicted Disease(s):** {', '.join(matched['diseases'])}\n💡 Advice: {matched['advice']}\n⚠️ Not a medical diagnosis."
-
-    # 3️⃣ Fallback: LLM prediction
+    symptoms_text = ", ".join(symptoms)
     prompt = f"""
 You are a helpful medical assistant.
-Patient symptoms: {', '.join(symptoms)}
+Patient symptoms: {symptoms_text}
 
-Based on these symptoms, suggest 1-3 possible diseases and 1-line advice for each.
-Format like:
-Predicted Disease(s): <disease names>
+Suggest 1-3 possible diseases that could cause these symptoms.
+For each disease, provide a one-line advice.
+Always include this disclaimer at the end: '⚠️ This is not a medical diagnosis. Please consult a doctor.'
+
+Format like this:
+Predicted Disease(s): <disease1>, <disease2>
 Advice: <short advice>
-Include disclaimer: '⚠️ This is not a medical diagnosis. Please consult a doctor.'
 """
     result = llm(prompt)
     return result[0]["generated_text"].strip()
