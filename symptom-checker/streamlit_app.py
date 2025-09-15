@@ -1,9 +1,9 @@
 import os
 import json
 import streamlit as st
-from chatbot.model_loader import load_llm, load_embedding_model
 import faiss
 import numpy as np
+from chatbot.model_loader import load_llm, load_embedding_model
 
 st.set_page_config(page_title="AI Symptom Checker", page_icon="🩺", layout="wide")
 st.title("🧠 Symptom Checker with AI")
@@ -11,7 +11,10 @@ st.title("🧠 Symptom Checker with AI")
 @st.cache_data
 def load_data():
     base_dir = os.path.dirname(__file__)
-    json_path = os.path.join(base_dir, "chatbot", "symptoms.json")
+    json_path = os.path.join(base_dir, "data", "symptoms.json") 
+    if not os.path.exists(json_path):
+        st.error(f"Cannot find symptoms.json at {json_path}")
+        return {}
     with open(json_path, "r") as f:
         symptoms_dict = json.load(f)
     return symptoms_dict
@@ -21,18 +24,21 @@ all_symptoms = list(symptoms_dict.keys())
 
 @st.cache_resource
 def init_models():
-    embedder = load_embedding_model()
-    llm = load_llm("google/flan-t5-small")
+    embedder = load_embedding_model()  
+    llm = load_llm("google/flan-t5-small")  
     return embedder, llm
 
 embedder, llm = init_models()
 
 SYMPTOM_DB = [
-    {"symptoms": ["fever", "cough", "sore throat"], "diseases": ["Common Cold", "Flu", "COVID-19"], 
+    {"symptoms": ["fever", "cough", "sore throat"], 
+     "diseases": ["Common Cold", "Flu", "COVID-19"], 
      "advice": "Stay hydrated, rest, and consult a doctor if symptoms persist more than 3 days."},
-    {"symptoms": ["chest pain", "shortness of breath", "dizziness"], "diseases": ["Heart Attack", "Angina", "Panic Attack"], 
+    {"symptoms": ["chest pain", "shortness of breath", "dizziness"], 
+     "diseases": ["Heart Attack", "Angina", "Panic Attack"], 
      "advice": "Seek immediate medical help. Call emergency services."},
-    {"symptoms": ["headache", "sensitivity to light", "stiff neck"], "diseases": ["Migraine", "Meningitis"], 
+    {"symptoms": ["headache", "sensitivity to light", "stiff neck"], 
+     "diseases": ["Migraine", "Meningitis"], 
      "advice": "If sudden and severe, seek emergency medical attention."}
 ]
 
@@ -43,6 +49,7 @@ index.add(embeddings)
 
 def predict(symptoms):
     symptoms_lower = [s.lower() for s in symptoms]
+
     for entry in SYMPTOM_DB:
         if all(s in [x.lower() for x in entry["symptoms"]] for s in symptoms_lower):
             return f"**Predicted Disease(s):** {', '.join(entry['diseases'])}\n💡 Advice: {entry['advice']}"
